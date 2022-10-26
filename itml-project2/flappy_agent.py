@@ -27,7 +27,7 @@ class FlappyAgent:
         self.q_values: Dict[Tuple[int, int, int, int], Dict[int, float]] = {}
         self.learning_rate: float = 0.1 # alpha
         self.discount: float = 1 # gamma 
-        self.epsilon: float = 0.1
+        self.epsilon: float = 0.2
     
     def state_to_internal_state(self, state: Dict[str, int]) -> Tuple[int, int, int, int]:
         # make a method that maps a game state to your discretized version of it, e.g., 
@@ -117,13 +117,17 @@ class FlappyAgent:
         # need to handle the case if there's no values for either s_0 or s_1
 
         if s_0 is None:
+            print("no 0")
             s_0 = 0
         if s_1 is None:
+            print("no 1")
             s_1 = 0
-        if s_0 > s_1:
-            return 0
-        else:
+        if s_1 > s_0:
+            # print("1!!")
             return 1
+        else:
+            # print("0!!")
+            return 0
 
     def training_policy(self, state: Dict[str, int]) -> int:
         """ Returns the index of the action that should be done in state while training the agent.
@@ -133,11 +137,13 @@ class FlappyAgent:
         """
 
         greedy: bool = np.random.choice([True,False], p=[self.epsilon, 1 - self.epsilon])
+        # greedy = False
 
         if greedy:
             action = self.action_with_max_value(state)
         else:
             action = random.randint(0, 1)
+        # action = [0, 0, 1, 1, 1, 1, 1][random.randint(0, 6)]
 
         return action
 
@@ -233,23 +239,66 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
             nb_episodes -= 1
             score = 0
         
+def write(agent, filestr):
 
-iterations: int = 100000
-agent: FlappyAgent  = FlappyAgent()
+    # WRITE
+    if not os.path.exists("results"):
+        os.mkdir("results")
 
-train(iterations, agent)
+    while os.path.exists(filestr):
+        filestr ="new_" + filestr
 
-# WRITE
-if not os.path.exists("results"):
-    os.mkdir("results")
+    w = csv.writer(open(filestr, "w"))
+    for key, val in agent.q_values.items():
+        zero = ""
+        one = ""
+        if val != None:
+            if 0 in val :
+                zero = val[0]
+            if 1 in val:
+                one = val[1]
+        a, b, c, d = key    
+        w.writerow([a, b, c, d, zero, one])
 
-filestr: str = 'results/qvalues_' + str(iterations) + '.csv'
-if os.path.exists(filestr):
-    filestr += "_new"
+def read(filestr):
+    qvals = dict()
+    # READ
+    with open(filestr, mode ='r') as file:
+        csvFile = csv.reader(file)
+        
+        # displaying the contents of the CSV file
+        for line in csvFile:
+            if line == []:
+                continue
+            a, b, c, d, zero, one = line
 
-w = csv.writer(open(filestr, "w"))
+            t = dict()
 
-for key, val in agent.q_values.items():
-    w.writerow([key, val])
+            if zero != "":
+                t[0] = float(zero)
+            if one != "":
+                t[1] = float(one)
 
-run_game(1, agent)
+            qvals[(int(a), int(b), int(c), float(d))] = t
+
+    return qvals
+    
+def main():
+    # SETUP
+    iterations: int = 100001
+    agent: FlappyAgent  = FlappyAgent()
+    filestr: str = 'results/qvalues_' + str(iterations) + '.csv'
+   
+    # train(iterations, agent)
+    # write(agent, filestr)
+
+    vals = read("results/qvalues_test.csv")
+    # print(filestr)
+    # vals = read(filestr)
+    agent.q_values = vals
+
+    print(agent.q_values)
+
+    run_game(100, agent)
+
+main()
