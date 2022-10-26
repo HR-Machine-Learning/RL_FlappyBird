@@ -18,7 +18,7 @@ def translate_int(value: int, leftMin: int, leftMax: int, rightMin: int, rightMa
     valueScaled: float = float(value - leftMin) / float(leftSpan)
 
     # Convert the 0-1 range into a value in the right range.
-    return floor(rightMin + (valueScaled * rightSpan))
+    return max(min(floor(rightMin + (valueScaled * rightSpan)), rightMax), rightMin)
 
 class FlappyAgent:
     def __init__(self):
@@ -39,14 +39,11 @@ class FlappyAgent:
         next_pipe_dist_to_player: int = state['next_pipe_dist_to_player']
         player_vel: int = state['player_vel']
 
-        print(player_y, next_pipe_top_y, next_pipe_dist_to_player)
-        
         player_y: int = translate_int(player_y, 0, 512, 0, 15)
         next_pipe_top_y: int = translate_int(next_pipe_top_y, 0, 512, 0, 15)
         next_pipe_dist_to_player: int = translate_int(next_pipe_dist_to_player, 0, 288, 0, 15)
 
         if not(0 <= player_y <= 15 and 0 <= next_pipe_top_y <= 15 and 0 <= next_pipe_dist_to_player <= 15):
-            print(player_y, next_pipe_top_y, next_pipe_dist_to_player)
             raise Exception
 
         return (player_y, next_pipe_top_y, next_pipe_dist_to_player, player_vel)
@@ -173,12 +170,10 @@ def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
 
         # step the environment
         thing: int = env.act(env.getActionSet()[action])
-        if type(thing) != int:
-            print("Tjark was here")
+        # if type(thing) != int:
+        #     print("Tjark was here", type(thing))
 
         reward: int = thing
-
-        print("reward=%d" % reward)
 
         end: bool = env.game_over()
         # s2 = env.getGameState()
@@ -188,6 +183,8 @@ def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
         
         # reset the environment if the game is over
         if end:
+            print("-------------")
+            print("NEW EPISODE:", nb_episodes)
             print("score for this episode: %d" % score)
             env.reset_game()
             nb_episodes -= 1
@@ -207,19 +204,17 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
 
     score: int = 0
     while nb_episodes > 0:
-        print("NEW EPISODE:")
-        print(nb_episodes)
+        
         # pick an action
         state: Dict[str, int] = env.game.getGameState()
         action: int = agent.training_policy(state)
 
         # step the environment
         thing: int = env.act(env.getActionSet()[action])
-        if type(thing) != int:
-            print("Tjark was here")
+        # if type(thing) != int:
+        #     print("Tjark was here", type(thing))
 
         reward: int = thing
-        print("reward=%d" % reward)
 
         newState = env.game.getGameState()
         agent.observe(state, action, reward, newState, env.game_over())
@@ -228,11 +223,14 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
 
         # reset the environment if the game is over
         if env.game_over():
+            print("-------------")
+            print("number of q values", len(agent.q_values))
+            print("NEW EPISODE:", nb_episodes)
             print("score for this episode: %d" % score)
             env.reset_game()
             nb_episodes -= 1
             score = 0
 
 agent: FlappyAgent = FlappyAgent()
-train(100, agent)
+train(40000, agent)
 run_game(1, agent)
