@@ -1,9 +1,8 @@
 from multiprocessing.dummy import active_children
+import os
 from ple.games.flappybird import FlappyBird
 from ple import PLE
-import pickle
-import os.path
-import os
+import csv 
 import random
 import numpy as np
 
@@ -196,9 +195,6 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
     
 
     # Lok for agent, create folder for it if none exist
-    if not os.path.exists("q_learning"):
-        print("q_learning")
-        os.mkdir("q_learning")
     # env = PLE(FlappyBird(), fps=30, display_screen=False, force_fps=False, rng=None,
     #         reward_values = reward_values)
     
@@ -231,23 +227,29 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
             # print("number of q values", len(agent.q_values))
             # print("NEW EPISODE:", nb_episodes)
             # print("score for this episode: %d" % score)
-            print(nb_episodes)
+            if nb_episodes % 100 == 0:
+                print(nb_episodes)
             env.reset_game()
             nb_episodes -= 1
             score = 0
         
-        with open('{}/agent.pkl'.format('q_learning'), 'wb') as f:
-            pickle.dump((agent), f, pickle.HIGHEST_PROTOCOL)
 
+iterations: int = 100000
 agent: FlappyAgent  = FlappyAgent()
 
-try:    # If agent already exists, load it's snapshot and use it.
-    with open('q_learning/agent.pkl', 'rb') as f:
-        agent = pickle.load(f)
-        print('Running snapshot {}'.format(len(agent.q_values)))
-except:
-    print('No agent snapshot exists, starting new one.')
+train(iterations, agent)
 
-agent: FlappyAgent = FlappyAgent()
-train(50000, agent)
+# WRITE
+if not os.path.exists("results"):
+    os.mkdir("results")
+
+filestr: str = 'results/qvalues_' + str(iterations) + '.csv'
+if os.path.exists(filestr):
+    filestr += "_new"
+
+w = csv.writer(open(filestr, "w"))
+
+for key, val in agent.q_values.items():
+    w.writerow([key, val])
+
 run_game(1, agent)
