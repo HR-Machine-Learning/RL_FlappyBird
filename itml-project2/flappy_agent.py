@@ -1,7 +1,9 @@
 from multiprocessing.dummy import active_children
 from ple.games.flappybird import FlappyBird
 from ple import PLE
-
+import pickle
+import os.path
+import os
 import random
 import numpy as np
 
@@ -115,6 +117,10 @@ class FlappyAgent:
         # TODO 
         # need to handle the case if there's no values for either s_0 or s_1
 
+        if s_0 is None:
+            s_0 = 0
+        if s_1 is None:
+            s_1 = 0
         if s_0 > s_1:
             return 0
         else:
@@ -170,8 +176,6 @@ def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
 
         # step the environment
         thing: int = env.act(env.getActionSet()[action])
-        # if type(thing) != int:
-        #     print("Tjark was here", type(thing))
 
         reward: int = thing
 
@@ -183,9 +187,6 @@ def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
         
         # reset the environment if the game is over
         if end:
-            print("-------------")
-            print("NEW EPISODE:", nb_episodes)
-            print("score for this episode: %d" % score)
             env.reset_game()
             nb_episodes -= 1
             score = 0
@@ -193,6 +194,11 @@ def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
 def train(nb_episodes: int, agent: FlappyAgent) -> None:
     reward_values: Dict[str, float] = agent.reward_values()
     
+
+    # Lok for agent, create folder for it if none exist
+    if not os.path.exists("q_learning"):
+        print("q_learning")
+        os.mkdir("q_learning")
     # env = PLE(FlappyBird(), fps=30, display_screen=False, force_fps=False, rng=None,
     #         reward_values = reward_values)
     
@@ -211,8 +217,6 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
 
         # step the environment
         thing: int = env.act(env.getActionSet()[action])
-        # if type(thing) != int:
-        #     print("Tjark was here", type(thing))
 
         reward: int = thing
 
@@ -223,14 +227,27 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
 
         # reset the environment if the game is over
         if env.game_over():
-            print("-------------")
-            print("number of q values", len(agent.q_values))
-            print("NEW EPISODE:", nb_episodes)
-            print("score for this episode: %d" % score)
+            # print("-------------")
+            # print("number of q values", len(agent.q_values))
+            # print("NEW EPISODE:", nb_episodes)
+            # print("score for this episode: %d" % score)
+            print(nb_episodes)
             env.reset_game()
             nb_episodes -= 1
             score = 0
+        
+        with open('{}/agent.pkl'.format('q_learning'), 'wb') as f:
+            pickle.dump((agent), f, pickle.HIGHEST_PROTOCOL)
+
+agent: FlappyAgent  = FlappyAgent()
+
+try:    # If agent already exists, load it's snapshot and use it.
+    with open('q_learning/agent.pkl', 'rb') as f:
+        agent = pickle.load(f)
+        print('Running snapshot {}'.format(len(agent.q_values)))
+except:
+    print('No agent snapshot exists, starting new one.')
 
 agent: FlappyAgent = FlappyAgent()
-train(40000, agent)
+train(50000, agent)
 run_game(1, agent)
