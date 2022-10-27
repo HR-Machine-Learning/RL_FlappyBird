@@ -29,7 +29,7 @@ class FlappyAgent:
         self.q_values: Dict[Tuple[int, int, int, int], Dict[int, float]] = {}
         self.learning_rate: float = 0.1 # alpha
         self.discount: float = 1 # gamma 
-        self.epsilon: float = 0.1
+        self.epsilon: float = 0.7
         self.fig = None
         self.nbr_of_episodes = 0
         self.nbr_of_frames = 0
@@ -145,7 +145,7 @@ class FlappyAgent:
             training_policy is called once per frame in the game while training
         """
 
-        greedy: bool = np.random.choice([False,True], p=[self.epsilon, 1 - self.epsilon])
+        greedy: bool = np.random.choice([True, False], p=[self.epsilon, 1 - self.epsilon])
         # greedy = False
 
         if greedy:
