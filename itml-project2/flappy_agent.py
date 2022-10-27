@@ -145,7 +145,7 @@ class FlappyAgent:
             training_policy is called once per frame in the game while training
         """
 
-        greedy: bool = np.random.choice([True,False], p=[self.epsilon, 1 - self.epsilon])
+        greedy: bool = np.random.choice([False,True], p=[self.epsilon, 1 - self.epsilon])
         # greedy = False
 
         if greedy:
@@ -328,21 +328,21 @@ def read(filestr):
     
 def main():
     # SETUP
-    iterations: int = 666666
+    iterations: int = 4000
     agent: FlappyAgent  = FlappyAgent()
     filestr: str = 'results/qvalues_' + str(iterations)
    
-    # train(iterations, agent)
-    # write(agent, filestr)
+    train(iterations, agent)
+    write(agent, filestr)
 
-    vals = read("results/qvalues_666666")
+    vals = read("results/qvalues_4000")
     print(filestr)
     vals = read(filestr)
     agent.q_values = vals
 
     print(len(agent.q_values))
 
-    #run_game(1, agent)
-    agent.plot("pi")
+    run_game(10, agent)
+    #agent.plot("pi")
 
 main()
