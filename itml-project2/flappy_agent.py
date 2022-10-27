@@ -6,9 +6,10 @@ from ple import PLE
 import csv 
 import random
 import numpy as np
-
+import matplotlib.pyplot as plt
 from math import floor
-
+import pandas as pd
+import seaborn as sns
 from typing import Dict, Tuple
 
 def translate_int(value: int, leftMin: int, leftMax: int, rightMin: int, rightMax: int) -> int:
@@ -29,6 +30,9 @@ class FlappyAgent:
         self.learning_rate: float = 0.1 # alpha
         self.discount: float = 1 # gamma 
         self.epsilon: float = 0.1
+        self.fig = None
+        self.nbr_of_episodes = 0
+        self.nbr_of_frames = 0
     
     def state_to_internal_state(self, state: Dict[str, int]) -> Tuple[int, int, int, int]:
         # make a method that maps a game state to your discretized version of it, e.g., 
@@ -110,6 +114,9 @@ class FlappyAgent:
 
         self.set_q(s1, action, o_value)  
 
+        if end:
+            self.nbr_of_episodes += 1
+
     def action_with_max_value(self, state: Dict[str, int]) -> int:
 
         s_0 = self.get_q(state, 0)
@@ -158,6 +165,35 @@ class FlappyAgent:
         """
 
         return self.action_with_max_value(state)
+
+
+    def plot(self, what):
+            data = [k + tuple(self.q_values[k]) for k in self.q_values.keys()]
+            if self.fig == None:
+                self.fig = plt.figure()
+            else:
+                plt.figure(self.fig.number)
+            self.fig.show()
+            self.fig.canvas.draw()
+            self.fig, ax = plt.subplots(figsize=(20, 20))
+            df = pd.DataFrame(data=data, columns=('next_pipe_top_y', 'player_y', 'player_vel', 'next_pipe_dist_to_player', 'q_flap', 'q_noop'))
+            df['delta_y'] = df['player_y'] - df['next_pipe_top_y']
+            df['v'] = df[['q_noop', 'q_flap']].max(axis=1)
+            df['pi'] = (df[['q_noop', 'q_flap']].idxmax(axis=1) == 'q_flap')*1
+            selected_data = df.groupby(['delta_y','next_pipe_dist_to_player'], as_index=False).mean()
+            plt.clf()
+            with sns.axes_style("white"):
+                if what in ('q_flap', 'q_noop', 'v'):
+                    ax = sns.heatmap(selected_data.pivot('delta_y','next_pipe_dist_to_player',what), vmin=-5, vmax=5, cmap='coolwarm', annot=True, fmt='.2f')
+                elif what == 'pi':
+                    ax = sns.heatmap(selected_data.pivot('delta_y','next_pipe_dist_to_player', 'pi'), vmin=0, vmax=1, cmap='coolwarm')
+                ax.invert_xaxis()
+                ax.set_title(what + ' after ' + str(self.nbr_of_frames) + ' frames / ' + str(self.nbr_of_episodes) + ' episodes')
+            plt.ion()
+            plt.show()
+            plt.draw()
+            plt.pause(0.1)
+            self.fig.savefig(what + '_' + 'plot.jpg', bbox_inches='tight', dpi=150)
 
 def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
     """ Runs nb_episodes episodes of the game with agent picking the moves.
@@ -306,6 +342,7 @@ def main():
 
     print(len(agent.q_values))
 
-    run_game(10, agent)
+    #run_game(1, agent)
+    agent.plot("pi")
 
 main()
