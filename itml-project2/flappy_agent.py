@@ -1,5 +1,6 @@
 from multiprocessing.dummy import active_children
 import os
+import time
 from ple.games.flappybird import FlappyBird
 from ple import PLE
 import csv 
@@ -27,7 +28,7 @@ class FlappyAgent:
         self.q_values: Dict[Tuple[int, int, int, int], Dict[int, float]] = {}
         self.learning_rate: float = 0.1 # alpha
         self.discount: float = 1 # gamma 
-        self.epsilon: float = 0.2
+        self.epsilon: float = 0.1
     
     def state_to_internal_state(self, state: Dict[str, int]) -> Tuple[int, int, int, int]:
         # make a method that maps a game state to your discretized version of it, e.g., 
@@ -99,16 +100,17 @@ class FlappyAgent:
         if current_state_value is None:
             current_state_value = 0
         
-        # Calculates return
-        max_next_state: float = self.discount * self.action_with_max_value(s2) 
-
         # Updates Q(s, a) with a new value
-        value: float = current_state_value + self.learning_rate * (reward + max_next_state - current_state_value)
+        # value: float = current_state_value + self.learning_rate * (reward +  self.discount * self.action_with_max_value(s2)  - current_state_value)
 
-        self.set_q(s1, action, value)  
+        o_value: float = current_state_value + self.learning_rate * (reward + self.discount * self.get_q(s2, self.action_with_max_value(s2)) - self.get_q(s1, action))
+
+        # if value != o_value:
+        #     print(value, o_value)
+
+        self.set_q(s1, action, o_value)  
 
     def action_with_max_value(self, state: Dict[str, int]) -> int:
-        # TODO should return the action that yields the highest reward
 
         s_0 = self.get_q(state, 0)
         s_1 = self.get_q(state, 1)
@@ -211,6 +213,7 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
     env.init()
 
     score: int = 0
+    prev_time = 0
     while nb_episodes > 0:
         
         # pick an action
@@ -233,8 +236,10 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
             # print("number of q values", len(agent.q_values))
             # print("NEW EPISODE:", nb_episodes)
             # print("score for this episode: %d" % score)
-            if nb_episodes % 100 == 0:
-                print(nb_episodes)
+            if nb_episodes % 1000 == 0:
+                curr_time = time.time()
+                print(curr_time - prev_time, ":", nb_episodes, "-", len(agent.q_values))
+                prev_time = curr_time
             env.reset_game()
             nb_episodes -= 1
             score = 0
@@ -246,7 +251,9 @@ def write(agent, filestr):
         os.mkdir("results")
 
     while os.path.exists(filestr):
-        filestr ="new_" + filestr
+        filestr =+ "_new"
+
+    filestr += ".csv"
 
     w = csv.writer(open(filestr, "w"))
     for key, val in agent.q_values.items():
@@ -263,7 +270,7 @@ def write(agent, filestr):
 def read(filestr):
     qvals = dict()
     # READ
-    with open(filestr, mode ='r') as file:
+    with open(filestr + ".csv", mode ='r') as file:
         csvFile = csv.reader(file)
         
         # displaying the contents of the CSV file
@@ -285,20 +292,20 @@ def read(filestr):
     
 def main():
     # SETUP
-    iterations: int = 100001
+    iterations: int = 666666
     agent: FlappyAgent  = FlappyAgent()
-    filestr: str = 'results/qvalues_' + str(iterations) + '.csv'
+    filestr: str = 'results/qvalues_' + str(iterations)
    
     # train(iterations, agent)
     # write(agent, filestr)
 
-    vals = read("results/qvalues_test.csv")
-    # print(filestr)
-    # vals = read(filestr)
+    vals = read("results/qvalues_666666")
+    print(filestr)
+    vals = read(filestr)
     agent.q_values = vals
 
-    print(agent.q_values)
+    print(len(agent.q_values))
 
-    run_game(100, agent)
+    run_game(10, agent)
 
 main()
