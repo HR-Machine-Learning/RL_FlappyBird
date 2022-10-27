@@ -29,7 +29,7 @@ class FlappyAgent:
         self.q_values: Dict[Tuple[int, int, int, int], Dict[int, float]] = {}
         self.learning_rate: float = 0.1 # alpha
         self.discount: float = 1 # gamma 
-        self.epsilon: float = 0.7
+        self.epsilon: float = 0.1
         self.fig = None
         self.nbr_of_episodes = 0
         self.nbr_of_frames = 0
@@ -145,7 +145,7 @@ class FlappyAgent:
             training_policy is called once per frame in the game while training
         """
 
-        greedy: bool = np.random.choice([True, False], p=[self.epsilon, 1 - self.epsilon])
+        greedy: bool = np.random.choice([False, True], p=[self.epsilon, 1 - self.epsilon])
         # greedy = False
 
         if greedy:
@@ -194,6 +194,9 @@ class FlappyAgent:
             plt.draw()
             plt.pause(0.1)
             self.fig.savefig(what + '_' + 'plot.jpg', bbox_inches='tight', dpi=150)
+
+class FlappyAgentFunctionApproximation(FlappyAgent):
+    pass
 
 def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
     """ Runs nb_episodes episodes of the game with agent picking the moves.
@@ -326,8 +329,9 @@ def read(filestr):
 
     return qvals
     
-def main():
-    # SETUP
+
+def main() -> None:
+        # SETUP
     iterations: int = 4000
     agent: FlappyAgent  = FlappyAgent()
     filestr: str = 'results/qvalues_' + str(iterations)
