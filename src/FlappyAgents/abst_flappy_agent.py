@@ -21,36 +21,9 @@ class FlappyAgent(metaclass=abc.ABCMeta):
         """
         return {"positive": 1.0, "tick": 0.0, "loss": -5.0}
 
-    def translate_int(self, value: int, leftMin: int, leftMax: int, rightMin: int, rightMax: int) -> int:
-        # Figure out how 'wide' each range is
-        leftSpan: int = leftMax - leftMin
-        rightSpan: int = rightMax - rightMin
-
-        # Convert the left range into a 0-1 range (float)
-        valueScaled: float = float(value - leftMin) / float(leftSpan)
-
-        # Convert the 0-1 range into a value in the right range.
-        return max(min(floor(rightMin + (valueScaled * rightSpan)), rightMax), rightMin)
-
-    def state_to_internal_state(self, state: Dict[str, int]) -> Tuple[int, int, int, int]:
-        """ Maps a game state to the discretized version of it.
-        """
-
-        player_y: int = state['player_y']
-        next_pipe_top_y: int = state['next_pipe_top_y']
-        next_pipe_dist_to_player: int = state['next_pipe_dist_to_player']
-        player_vel: int = state['player_vel']
-
-        player_y: int = self.translate_int(player_y, 0, 512, 0, 15)
-        next_pipe_top_y: int = self.translate_int(
-            next_pipe_top_y, 0, 512, 0, 15)
-        next_pipe_dist_to_player: int = self.translate_int(
-            next_pipe_dist_to_player, 0, 288, 0, 15)
-
-        if not (0 <= player_y <= 15 and 0 <= next_pipe_top_y <= 15 and 0 <= next_pipe_dist_to_player <= 15):
-            raise Exception
-
-        return (player_y, next_pipe_top_y, next_pipe_dist_to_player, player_vel)
+    @abc.abstractmethod
+    def state_to_internal_state(self, state):
+        pass
 
     @abc.abstractmethod
     def observe(self, s1, action, reward, s2, end):

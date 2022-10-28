@@ -11,17 +11,15 @@ from math import floor
 import pandas as pd
 import seaborn as sns
 from typing import Dict, Tuple
-from neural_network import NeuralNetwork
 
 from FlappyAgents.abst_flappy_agent import FlappyAgent
-from FlappyAgents.deepQ_flappy_agent import NeuralNetworkAgent
-from FlappyAgents.qlearning_flappy_agent import QlearningAgent
+from FlappyAgents.new_deepQ_flappy_agent import newDeepQAgent
 
 def main() -> None:
     # SETUP
     iterations: int = 4000
     #agent: FlappyAgent = QlearningAgent()
-    agent: FlappyAgent = NeuralNetworkAgent()
+    agent: FlappyAgent = newDeepQAgent()
     filestr: str = 'results/qvalues_' + str(iterations)
 
     train(iterations, agent)
