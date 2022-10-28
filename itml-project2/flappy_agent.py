@@ -166,7 +166,7 @@ class QlearningAgent(FlappyAgent):
 
         self.q_values[internal_state][action] = value
 
-    def observe(self, s1: Dict[str, int], action: int, reward: float, s2: Dict[str, int], end: bool) -> None:
+    def observe(self, iteration, s1: Dict[str, int], action: int, reward: float, s2: Dict[str, int], end: bool) -> None:
         """ this function is called during training on each step of the game where
             the state transition is going from state s1 with action a to state s2 and
             yields the reward r. If s2 is a terminal state, end==True, otherwise end==False.
@@ -267,10 +267,6 @@ class NeuralNetworkAgent(FlappyAgent):
         
         self.replay_buffer.append(o_value)
 
-        # TODO: if array.size == 1000, train the neural network
-            #train 
-            # empty the array
-
         if self.replay_buffer.size == 1000:
             self.neural_network.partial_training(self.replay_buffer)
             self.replay_buffer = np.empty(shape=1000)
@@ -279,28 +275,27 @@ class NeuralNetworkAgent(FlappyAgent):
             self.nbr_of_episodes += 1
 
     def action_with_max_value(self, state: Dict[str, int]) -> int:
-
-        s_0 = self.get_q(state, 0)
-        s_1 = self.get_q(state, 1)
-
-        # TODO
-        # need to handle the case if there's no values for either s_0 or s_1
-
-        if s_0 is None:
-            s_0 = 0
-        if s_1 is None:
-            s_1 = 0
-        if s_1 > s_0:
-            return 1
-        else:
-            return 0
+        return random.randint(0, 1) #TODO tmp solution to make it runnable
 
     def policy(self, state) -> int:
         return self.action_with_max_value(self.neural_network.predict_next_state(self.state_to_internal_state(state)))
 
     def training_policy(self, state):
-        return self.action_with_max_value(self.neural_network.predict_next_state(self.state_to_internal_state(state)))
+        """ Returns the index of the action that should be done in state while training the agent.
+            Possible actions in Flappy Bird are 0 (flap the wing) or 1 (do nothing).
 
+            training_policy is called once per frame in the game while training
+        """
+
+        greedy: bool = np.random.choice(
+            [False, True], p=[self.epsilon, 1 - self.epsilon])
+
+        if greedy:
+            action = self.action_with_max_value(state)
+        else:
+            action = random.randint(0, 1)
+
+        return action
 
 def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
     """ Runs nb_episodes episodes of the game with agent picking the moves.
@@ -345,14 +340,12 @@ def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
 def train(nb_episodes: int, agent: FlappyAgent) -> None:
     reward_values: Dict[str, float] = agent.reward_values()
 
-    # Lok for agent, create folder for it if none exist
-    # env = PLE(FlappyBird(), fps=30, display_screen=False, force_fps=False, rng=None,
-    #         reward_values = reward_values)
-
-    # Faster:
-    env: PLE = PLE(FlappyBird(), fps=30, display_screen=False, force_fps=True, rng=None,
-                   reward_values=reward_values)
-
+    env: PLE = PLE(FlappyBird(), 
+                   fps = 30, 
+                   display_screen = False, 
+                   force_fps = True, 
+                   rng = None,
+                   reward_values = reward_values)
     env.init()
 
     score: int = 0
@@ -360,12 +353,10 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
     
     iteration = 0
     while nb_episodes > 0:
-        iteration += 1
         # pick an action
         state: Dict[str, int] = env.game.getGameState()
         action: int = agent.training_policy(state)
 
-        # step the environment
         reward: int = env.act(env.getActionSet()[action])
 
         newState = env.game.getGameState()
@@ -387,6 +378,8 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
             env.reset_game()
             nb_episodes -= 1
             score = 0
+        
+        iteration += 1
 
 
 def write(agent, filestr):
@@ -439,7 +432,7 @@ def read(filestr):
 
 def main() -> None:
     # SETUP
-    iterations: int = 2000
+    iterations: int = 4000
     #agent: FlappyAgent = QlearningAgent()
     agent: FlappyAgent = NeuralNetworkAgent()
     filestr: str = 'results/qvalues_' + str(iterations)
@@ -454,7 +447,7 @@ def main() -> None:
 
     #print(len(agent.q_values))
 
-    a#gent.plot("pi")
+    #gent.plot("pi")
     run_game(10, agent)
     #agent.plot("pi")
 
