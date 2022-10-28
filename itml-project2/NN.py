@@ -3,7 +3,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from sklearn import preprocessing
-from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPRegressor
 
 
@@ -14,7 +13,7 @@ class NeuralNetwork:
         self.activation_function = activation_function
         self.initial_learning_rate = initial_learning_rate
         self.y = [0, 1]
-        # I think the output layer will be infer from the y feature and doesn't need to be specified
+
         self.model = MLPRegressor(hidden_layer_sizes=self.hidden_layers,
                                   activation=self.activation_function,
                                   learning_rate_init=self.initial_learning_rate)
@@ -31,5 +30,5 @@ class NeuralNetwork:
         X_normalized = preprocessing.normalize(X, norm='l2')
         return X_normalized
 
-    def predict_(self, state):
-        return 
+    def predict_next_state(self, state):
+        return self.model.predict(state)
