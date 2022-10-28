@@ -20,8 +20,8 @@ from FlappyAgents.qlearning_flappy_agent import QlearningAgent
 def main() -> None:
     # SETUP
     iterations: int = 4000
-    agent: FlappyAgent = QlearningAgent()
-    #agent: FlappyAgent = NeuralNetworkAgent()
+    #agent: FlappyAgent = QlearningAgent()
+    agent: FlappyAgent = NeuralNetworkAgent()
     filestr: str = 'results/qvalues_' + str(iterations)
 
     train(iterations, agent)
@@ -113,8 +113,8 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
             # print("score for this episode: %d" % score)
             if nb_episodes % 1000 == 0:
                 curr_time = time.time()
-                print(curr_time - prev_time, ":",
-                      nb_episodes, "-", len(agent.q_values))
+                print(curr_time - prev_time, ":")
+                      #nb_episodes, "-", len(agent.q_values))
                 prev_time = curr_time
             env.reset_game()
             nb_episodes -= 1
