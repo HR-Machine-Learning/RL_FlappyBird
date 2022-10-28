@@ -346,7 +346,8 @@ def main() -> None:
 
     print(len(agent.q_values))
 
+    agent.plot("pi")
     run_game(10, agent)
-    #agent.plot("pi")
+    agent.plot("pi")
 
 main()
