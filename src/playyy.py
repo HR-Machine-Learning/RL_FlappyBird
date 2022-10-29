@@ -13,13 +13,14 @@ import seaborn as sns
 from typing import Dict, Tuple
 
 from FlappyAgents.abst_flappy_agent import FlappyAgent
-from FlappyAgents.new_deepQ_flappy_agent import newDeepQAgent
+from FlappyAgents.deepQ_flappy_agent import DeepQAgent
+from FlappyAgents.qlearning_flappy_agent import QlearningAgent
 
 def main() -> None:
     # SETUP
     iterations: int = 4000
-    #agent: FlappyAgent = QlearningAgent()
-    agent: FlappyAgent = newDeepQAgent()
+    agent: FlappyAgent = QlearningAgent()
+    #agent: FlappyAgent = DeepQAgent()
     filestr: str = 'results/qvalues_' + str(iterations)
 
     train(iterations, agent)
