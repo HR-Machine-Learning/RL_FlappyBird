@@ -17,6 +17,7 @@ class DeepQAgent(FlappyAgent):
         self.fig = None
         self.nbr_of_episodes = 0
         self.nbr_of_frames = 0
+
         self.model: MLPRegressor = MLPRegressor(hidden_layer_sizes=(100, 10),
                                                 activation='logistic',
                                                 learning_rate_init=0.1,
@@ -25,7 +26,7 @@ class DeepQAgent(FlappyAgent):
 
     def get_q(self, state: Dict[str, int], action: int) -> float:
         internal_state: Tuple[int, int, int, int] = self.state_to_internal_state(state)
-        internal_state = internal_state + (action,) # Wrong, only state should be passed
+        internal_state = internal_state + (action,)
 
         return self.model.predict(internal_state)
 
@@ -115,7 +116,9 @@ class DeepQAgent(FlappyAgent):
         return self.action_with_max_value(state)
 
     def state_to_internal_state(self, state: Dict[str, int]) -> Tuple[int, int, int, int]:
-        # Normalizes the state in the range [-1,1]
+        """ Normalizes the state in the range [-1,1]
+        """
+
         player_y_normalized = 2 * (state['player_y'] - 0) / (512 - 0) - 1
         next_pipe_top_y_normalized = 2 * \
                                      (state['next_pipe_top_y'] - 0) / (512 - 0) - 1
