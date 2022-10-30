@@ -1,3 +1,4 @@
+from multiprocessing.dummy import active_children
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,11 +6,11 @@ from math import floor
 import pandas as pd
 import seaborn as sns
 from typing import Dict, Tuple
-from sklearn import preprocessing
 from sklearn.neural_network import MLPRegressor
-from FlappyAgents.abst_flappy_agent import FlappyAgent
+from abst_flappy_agent import FlappyAgent
 
-class DeepQAgent(FlappyAgent):
+
+class NewDeepQAgent(FlappyAgent):
     def __init__(self):
         self.learning_rate: float = 0.1  # alpha
         self.discount: float = 1  # gamma
@@ -17,31 +18,33 @@ class DeepQAgent(FlappyAgent):
         self.fig = None
         self.nbr_of_episodes = 0
         self.nbr_of_frames = 0
+        self.initialize_network()
+
+    def initialize_network(self):
+        ''' To the neural network we feed in the state, pass that 
+        through several hidden layers and then output the Q-values.
+        This means 4 input nodes, 1 output node'''
         self.model: MLPRegressor = MLPRegressor(hidden_layer_sizes=(100, 10),
                                                 activation='logistic',
-                                                learning_rate_init=0.1,
-                                                random_state=0)
-        self.initialize_model()
+                                                learning_rate_init=0.1)
+        # the ndarray is automatically filled with values
+        X = np.ndarray(shape=(4, 4), dtype=int)  # state
+        y = np.ndarray(shape=(4), dtype=float)  # expected Q-values
+        self.model.fit(X, y)
 
-    def get_q(self, state: Dict[str, int], action: int) -> float:
-        internal_state: Tuple[int, int, int, int] = self.state_to_internal_state(state)
-        internal_state = internal_state + (action,) # Wrong, only state should be passed
+    def get_q(self, state: Dict[str, int]) -> float:
+        # Returns Q(s) based on a state
+        internal_state: np.array = self.state_to_internal_state(state)
 
         return self.model.predict(internal_state)
 
-    def set_q(self, state: Dict[str, int], action: int, value: float) -> None:
-        # Sets a value to Q(s,a) based on a state and action pair
+    def set_q(self, state: Dict[str, int], action: int, o_value: float) -> None:
+        # Sets a value to Q(s) based on a state and action
+        y = np.array(o_value)
+        self.model.partial_fit(self.state_to_internal_state(state), y)
+        # TODO this will most likely lead to an error, check needed
 
-        # internal_state: Tuple[int, int, int,
-        #                       int] = self.state_to_internal_state(state)
-
-        # if not (internal_state in self.q_values):
-        #     self.q_values[internal_state] = dict()
-
-        # self.q_values[internal_state][action] = value
-        self.model.partial_fit([self.state_to_internal_state(state), action], value)
-
-    def observe(self, s1: Dict[str, int], action: int, reward: float, s2: Dict[str, int], end: bool):
+    def observe(self, iteration, s1: Dict[str, int], action: int, reward: float, s2: Dict[str, int], end: bool) -> None:
         """ this function is called during training on each step of the game where
             the state transition is going from state s1 with action a to state s2 and
             yields the reward r. If s2 is a terminal state, end==True, otherwise end==False.
@@ -50,31 +53,25 @@ class DeepQAgent(FlappyAgent):
             subsequent steps in the same episode. That is, s1 in the second call will be s2
             from the first call.
             """
-
-        current_state_value: float = self.get_q(s1, action)
+        current_state_value: float = self.get_q(s1)
 
         if current_state_value is None:
             current_state_value = 0
 
+        # TODO Bellman's equation needs to be updated for function approximation version
         o_value: float = current_state_value + self.learning_rate * \
-                         (reward + self.discount * self.get_q(s2,
-                                                              self.action_with_max_value(s2)) - self.get_q(s1, action))
+            (reward + self.discount * self.get_q(s2,
+             self.action_with_max_value(s2)) - self.get_q(s1, action))
 
-        # q_flap = self.get_q(s1, 1)
-        # q_no_flap = self.get_q(s1, 0)
-
-        self.set_q(s1, action, o_value)
+        self.set_q(s1, o_value)
 
         if end:
             self.nbr_of_episodes += 1
 
     def action_with_max_value(self, state: Dict[str, int]) -> int:
-
+        # TODO needs to be deleted
         s_0 = self.get_q(state, 0)
         s_1 = self.get_q(state, 1)
-
-        # TODO
-        # need to handle the case if there's no values for either s_0 or s_1
 
         if s_0 is None:
             s_0 = 0
@@ -114,25 +111,32 @@ class DeepQAgent(FlappyAgent):
 
         return self.action_with_max_value(state)
 
-    def state_to_internal_state(self, state: Dict[str, int]) -> Tuple[int, int, int, int]:
+    def state_to_internal_state(self, state: Dict[str, int]) -> np.array:
         # Normalizes the state in the range [-1,1]
         player_y_normalized = 2 * (state['player_y'] - 0) / (512 - 0) - 1
         next_pipe_top_y_normalized = 2 * \
-                                     (state['next_pipe_top_y'] - 0) / (512 - 0) - 1
+            (state['next_pipe_top_y'] - 0) / (512 - 0) - 1
         next_pipe_dist_to_player_normalized = 2 * \
-                                              (state['next_pipe_dist_to_player'] - 0) / (288 - 0) - 1
+            (state['next_pipe_dist_to_player'] - 0) / (288 - 0) - 1
         player_vel_normalized = 2 * (state['player_vel'] - -8) / (10 - -8) - 1
 
-        # return (player_y_normalized, next_pipe_top_y_normalized, next_pipe_dist_to_player_normalized,
-        # player_vel_normalized)
-        return 0, 0, 0, 0
+        normalized_state = np.array([player_y_normalized],
+                                    [next_pipe_top_y_normalized],
+                                    [next_pipe_dist_to_player_normalized],
+                                    [player_vel_normalized])
 
-    def initialize_model(self):
-        # self.q_values = dict()
+        # TODO remove this print
+        print(normalized_state)
 
-        five_tuple = (0, 0, 0, 0, 0)
+        return normalized_state
 
-        # create an np array with 5 0's
-        np_array = np.zeros(5).reshape(1, -1)
+    def translate_int(self, value: int, leftMin: int, leftMax: int, rightMin: int, rightMax: int) -> int:
+        # Figure out how 'wide' each range is
+        leftSpan: int = leftMax - leftMin
+        rightSpan: int = rightMax - rightMin
 
-        self.model.fit(np_array, [0])
+        # Convert the left range into a 0-1 range (float)
+        valueScaled: float = float(value - leftMin) / float(leftSpan)
+
+        # Convert the 0-1 range into a value in the right range.
+        return max(min(floor(rightMin + (valueScaled * rightSpan)), rightMax), rightMin)

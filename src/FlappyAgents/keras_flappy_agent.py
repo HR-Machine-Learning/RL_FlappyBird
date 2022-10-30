@@ -1,13 +1,14 @@
 import random
 import numpy as np
-import matplotlib.pyplot as plt
-from math import floor
-import pandas as pd
-import seaborn as sns
 from typing import Dict, Tuple
-from sklearn import preprocessing
+from sklearn import neural_network
 from sklearn.neural_network import MLPRegressor
 from FlappyAgents.abst_flappy_agent import FlappyAgent
+from keras.datasets import mnist
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasRegressor
+
 
 class DeepQAgent(FlappyAgent):
     def __init__(self):
@@ -17,17 +18,25 @@ class DeepQAgent(FlappyAgent):
         self.fig = None
         self.nbr_of_episodes = 0
         self.nbr_of_frames = 0
-        self.model: MLPRegressor = MLPRegressor(hidden_layer_sizes=(100, 10),
-                                                activation='logistic',
-                                                learning_rate_init=0.1,
-                                                random_state=0)
-        self.initialize_model()
+
+        # Model initialization
+        model = Sequential()
+        model.add(Dense(100, input_dim=4, activation='sigmoid'))
+        model.add(Dense(10, activation='sigmoid'))
+        model.add(Dense(1))
+        model.compile(loss='mean_squared_error',
+                           optimizer='adam', 
+                           metrics=['accuracy'])
+        self.neural_network = KerasRegressor(build_fn = model, epochs = 30, batch_size = 100, verbose = 1)
+
+
 
     def get_q(self, state: Dict[str, int], action: int) -> float:
-        internal_state: Tuple[int, int, int, int] = self.state_to_internal_state(state)
-        internal_state = internal_state + (action,) # Wrong, only state should be passed
+        internal_state: Tuple[int, int, int,
+                              int] = self.state_to_internal_state(state)
+        internal_state = internal_state + (action,)
 
-        return self.model.predict(internal_state)
+        return self.neural_network.predict([internal_state])
 
     def set_q(self, state: Dict[str, int], action: int, value: float) -> None:
         # Sets a value to Q(s,a) based on a state and action pair
@@ -39,7 +48,8 @@ class DeepQAgent(FlappyAgent):
         #     self.q_values[internal_state] = dict()
 
         # self.q_values[internal_state][action] = value
-        self.model.partial_fit([self.state_to_internal_state(state), action], value)
+        self.model.partial_fit(
+            [self.state_to_internal_state(state), action], value)
 
     def observe(self, s1: Dict[str, int], action: int, reward: float, s2: Dict[str, int], end: bool):
         """ this function is called during training on each step of the game where
@@ -57,8 +67,8 @@ class DeepQAgent(FlappyAgent):
             current_state_value = 0
 
         o_value: float = current_state_value + self.learning_rate * \
-                         (reward + self.discount * self.get_q(s2,
-                                                              self.action_with_max_value(s2)) - self.get_q(s1, action))
+            (reward + self.discount * self.get_q(s2,
+                                                 self.action_with_max_value(s2)) - self.get_q(s1, action))
 
         # q_flap = self.get_q(s1, 1)
         # q_no_flap = self.get_q(s1, 0)
@@ -115,12 +125,14 @@ class DeepQAgent(FlappyAgent):
         return self.action_with_max_value(state)
 
     def state_to_internal_state(self, state: Dict[str, int]) -> Tuple[int, int, int, int]:
-        # Normalizes the state in the range [-1,1]
+        """ Normalizes the state in the range [-1,1]
+        """
+
         player_y_normalized = 2 * (state['player_y'] - 0) / (512 - 0) - 1
         next_pipe_top_y_normalized = 2 * \
-                                     (state['next_pipe_top_y'] - 0) / (512 - 0) - 1
+            (state['next_pipe_top_y'] - 0) / (512 - 0) - 1
         next_pipe_dist_to_player_normalized = 2 * \
-                                              (state['next_pipe_dist_to_player'] - 0) / (288 - 0) - 1
+            (state['next_pipe_dist_to_player'] - 0) / (288 - 0) - 1
         player_vel_normalized = 2 * (state['player_vel'] - -8) / (10 - -8) - 1
 
         # return (player_y_normalized, next_pipe_top_y_normalized, next_pipe_dist_to_player_normalized,
