@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 from math import floor
 import pandas as pd
 import seaborn as sns
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 
 from FlappyAgents.abst_flappy_agent import FlappyAgent
 from FlappyAgents.deepQ_flappy_agent import DeepQAgent
@@ -37,19 +37,29 @@ def main() -> None:
     run_game(10, agent)
     #agent.plot("pi")
 
-def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
+def run_game(nb_episodes: int, agent: FlappyAgent) -> List[int]:
     """ Runs nb_episodes episodes of the game with agent picking the moves.
         An episode of FlappyBird ends with the bird crashing into a pipe or going off screen.
     """
 
+    scores = []
+
     reward_values = agent.reward_values()
 
-    # env = PLE(FlappyBird(), fps=30, display_screen=True, force_fps=False, rng=None,
-    #         reward_values = reward_values)
+    env = PLE(FlappyBird(), 
+            fps=30, 
+            display_screen=False, 
+            force_fps=True, 
+            rng=None,
+            reward_values = reward_values)
     # TODO: to speed up training change parameters of PLE as follows:
     # display_screen=False, force_fps=True
-    env: PLE = PLE(FlappyBird(), fps=30, display_screen=True, force_fps=False, rng=None,
-                   reward_values=reward_values)
+    # env: PLE = PLE(FlappyBird(), 
+    #             fps=30, 
+    #             display_screen=True, 
+    #             force_fps=False, 
+    #             rng=None,
+    #             reward_values=reward_values)
     env.init()
 
     score: int = 0
@@ -70,14 +80,19 @@ def run_game(nb_episodes: int, agent: FlappyAgent) -> None:
 
         score += reward
 
+
         # reset the environment if the game is over
         if end:
             env.reset_game()
             nb_episodes -= 1
+            scores.append(score)
             score = 0
 
+    return scores
+    return frames
 
-def train(nb_episodes: int, agent: FlappyAgent) -> None:
+
+def train(nb_episodes: int, agent: FlappyAgent) -> List[int]:
     reward_values: Dict[str, float] = agent.reward_values()
 
     env: PLE = PLE(FlappyBird(), 
@@ -92,7 +107,10 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
     prev_time = 0
     
     iteration = 0
+    frames: List[int] = []
+    framecount: int = 0
     while nb_episodes > 0:
+        framecount = framecount + 1
         # pick an action
         state: Dict[str, int] = env.game.getGameState()
         action: int = agent.training_policy(state)
@@ -106,13 +124,15 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
 
         # reset the environment if the game is over
         if env.game_over():
+            frames.append(framecount)
+            framecount = 0
             # print("-------------")
             # print("number of q values", len(agent.q_values))
             # print("NEW EPISODE:", nb_episodes)
             # print("score for this episode: %d" % score)
             if nb_episodes % 1000 == 0:
                 curr_time = time.time()
-                print(curr_time - prev_time, ":")
+                # print(curr_time - prev_time, ":")
                       #nb_episodes, "-", len(agent.q_values))
                 prev_time = curr_time
             env.reset_game()
@@ -120,6 +140,8 @@ def train(nb_episodes: int, agent: FlappyAgent) -> None:
             score = 0
         
         iteration += 1
+        
+    return frames
 
 
 def write(agent, filestr):
@@ -169,4 +191,5 @@ def read(filestr):
 
     return qvals
 
-main()
+if __name__ == "__main__":
+    main()
