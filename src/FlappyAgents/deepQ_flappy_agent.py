@@ -1,3 +1,4 @@
+from multiprocessing.dummy import active_children
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -5,11 +6,12 @@ from math import floor
 import pandas as pd
 import seaborn as sns
 from typing import Dict, Tuple
+from FlappyAgents.abst_flappy_agent import FlappyAgent
 from sklearn import preprocessing
 from sklearn.neural_network import MLPRegressor
-from FlappyAgents.abst_flappy_agent import FlappyAgent
 
-class DeepQAgent(FlappyAgent):
+
+class newDeepQAgent(FlappyAgent):
     def __init__(self):
         self.learning_rate: float = 0.1  # alpha
         self.discount: float = 1  # gamma
@@ -17,32 +19,54 @@ class DeepQAgent(FlappyAgent):
         self.fig = None
         self.nbr_of_episodes = 0
         self.nbr_of_frames = 0
-
+        self.replay_buffer=[[0,0,0,0,[0,0]], [0,0,0,0,[0,0]]]
         self.model: MLPRegressor = MLPRegressor(hidden_layer_sizes=(100, 10),
                                                 activation='logistic',
                                                 learning_rate_init=0.1,
-                                                random_state=0)
+                                                random_state = 0)
+                                            
+    
         self.initialize_model()
 
-    def get_q(self, state: Dict[str, int], action: int) -> float:
-        internal_state: Tuple[int, int, int, int] = self.state_to_internal_state(state)
-        internal_state = internal_state + (action,)
+        
 
-        return self.model.predict(internal_state)
+    def get_q(self, state: Dict[str, int], action: int) -> float:        
+        internal_state: Tuple[int, int, int, int] = self.state_to_internal_state(state)
+
+
+        state_action = internal_state 
+        np_state_action = np.array(state_action)
+
+        return self.model.predict(np_state_action.reshape(1, -1))
 
     def set_q(self, state: Dict[str, int], action: int, value: float) -> None:
         # Sets a value to Q(s,a) based on a state and action pair
 
-        # internal_state: Tuple[int, int, int,
-        #                       int] = self.state_to_internal_state(state)
+        internal_state: Tuple[int, int, int, int] = self.state_to_internal_state(state)
 
-        # if not (internal_state in self.q_values):
-        #     self.q_values[internal_state] = dict()
+        internal_state.append(value)
 
-        # self.q_values[internal_state][action] = value
-        self.model.partial_fit([self.state_to_internal_state(state), action], value)
+        if len(self.replay_buffer) == 1000: 
+            random.shuffle(self.replay_buffer)
+            self.replay_buffer = self.replay_buffer[100:]
+            random_states = self.replay_buffer[:100]   
 
-    def observe(self, s1: Dict[str, int], action: int, reward: float, s2: Dict[str, int], end: bool):
+            #with open("output_1.txt", "w") as txt_file:
+            #    for line in random_states:
+            #        txt_file.write(str(line) + "\n") # works with any number of elements in a line         
+
+            states = [list(s[0:4]) for s in random_states]
+            values = [s[4] for s in random_states]
+
+            #with open("output.txt", "w") as txt_file:
+            #    for line in values:
+            #        txt_file.write(str(line) + "\n") # works with any number of elements in a line
+            self.model.partial_fit(states, values)
+        else: 
+            self.replay_buffer.append(internal_state)
+
+
+    def observe(self, iteration, s1: Dict[str, int], action: int, reward: float, s2: Dict[str, int], end: bool) -> None:
         """ this function is called during training on each step of the game where
             the state transition is going from state s1 with action a to state s2 and
             yields the reward r. If s2 is a terminal state, end==True, otherwise end==False.
@@ -52,36 +76,36 @@ class DeepQAgent(FlappyAgent):
             from the first call.
             """
 
-        current_state_value: float = self.get_q(s1, action)
+        q_value = self.get_q(s2, self.action_with_max_value(s2))[0]
+        best_q = q_value[self.action_with_max_value(s2)]
+        
+        updated_value: float = reward + self.discount * best_q 
 
-        if current_state_value is None:
-            current_state_value = 0
+        new_q_value = [0,0]    
+        if best_q == 0:
+            new_q_value[0] = updated_value
+            new_q_value[1] = q_value[1]
+        else: # if best_q is 1
+            new_q_value[0] = q_value[0]
+            new_q_value[1] = updated_value
 
-        o_value: float = current_state_value + self.learning_rate * \
-                         (reward + self.discount * self.get_q(s2,
-                                                              self.action_with_max_value(s2)) - self.get_q(s1, action))
-
-        # q_flap = self.get_q(s1, 1)
-        # q_no_flap = self.get_q(s1, 0)
-
-        self.set_q(s1, action, o_value)
+        self.set_q(s1, action, new_q_value)
 
         if end:
             self.nbr_of_episodes += 1
 
     def action_with_max_value(self, state: Dict[str, int]) -> int:
 
-        s_0 = self.get_q(state, 0)
-        s_1 = self.get_q(state, 1)
+        q = self.get_q(state,0) # this should return a pair of q-values, [flap, no_flap]
+        
+        q_0 = q[0][0]
+        q_1 = q[0][1]
 
-        # TODO
-        # need to handle the case if there's no values for either s_0 or s_1
-
-        if s_0 is None:
-            s_0 = 0
-        if s_1 is None:
-            s_1 = 0
-        if s_1 > s_0:
+        if q_0 is None:
+            q_0 = 0
+        if q_1 is None:
+            q_1 = 0
+        if q_1 > q_0:
             return 1
         else:
             return 0
@@ -93,15 +117,12 @@ class DeepQAgent(FlappyAgent):
             training_policy is called once per frame in the game while training
         """
 
-        greedy: bool = np.random.choice(
-            [False, True], p=[self.epsilon, 1 - self.epsilon])
-        # greedy = False
+        greedy: bool = np.random.choice([False, True], p=[self.epsilon, 1 - self.epsilon])
 
         if greedy:
             action = self.action_with_max_value(state)
         else:
             action = random.randint(0, 1)
-        # action = [0, 0, 1, 1, 1, 1, 1][random.randint(0, 6)]
 
         return action
 
@@ -121,21 +142,14 @@ class DeepQAgent(FlappyAgent):
 
         player_y_normalized = 2 * (state['player_y'] - 0) / (512 - 0) - 1
         next_pipe_top_y_normalized = 2 * \
-                                     (state['next_pipe_top_y'] - 0) / (512 - 0) - 1
+            (state['next_pipe_top_y'] - 0) / (512 - 0) - 1
         next_pipe_dist_to_player_normalized = 2 * \
-                                              (state['next_pipe_dist_to_player'] - 0) / (288 - 0) - 1
+            (state['next_pipe_dist_to_player'] - 0) / (288 - 0) - 1
         player_vel_normalized = 2 * (state['player_vel'] - -8) / (10 - -8) - 1
 
-        # return (player_y_normalized, next_pipe_top_y_normalized, next_pipe_dist_to_player_normalized,
-        # player_vel_normalized)
-        return 0, 0, 0, 0
+        return [player_y_normalized, next_pipe_top_y_normalized, next_pipe_dist_to_player_normalized, player_vel_normalized]
 
     def initialize_model(self):
-        # self.q_values = dict()
+        np_array= [[1,2,3,4], [0,0,0,0]]
 
-        five_tuple = (0, 0, 0, 0, 0)
-
-        # create an np array with 5 0's
-        np_array = np.zeros(5).reshape(1, -1)
-
-        self.model.fit(np_array, [0])
+        self.model.fit(np_array, [[0,1],[0,1]])

@@ -11,7 +11,6 @@ from FlappyAgents.abst_flappy_agent import FlappyAgent
 
 class QlearningAgent(FlappyAgent):
     def __init__(self):
-        # TODO: you may need to do some initialization for your agent here
         self.q_values: Dict[Tuple[int, int, int, int], Dict[int, float]] = {}
         self.learning_rate: float = 0.1  # alpha
         self.discount: float = 1  # gamma
@@ -63,15 +62,9 @@ class QlearningAgent(FlappyAgent):
         if current_state_value is None:
             current_state_value = 0
 
-        # Updates Q(s, a) with a new value
-        # value: float = current_state_value + self.learning_rate * (reward +  self.discount * self.action_with_max_value(s2)  - current_state_value)
-
         o_value: float = current_state_value + self.learning_rate * \
             (reward + self.discount * self.get_q(s2,
              self.action_with_max_value(s2)) - self.get_q(s1, action))
-
-        # if value != o_value:
-        #     print(value, o_value)
 
         self.set_q(s1, action, o_value)
 
@@ -82,9 +75,6 @@ class QlearningAgent(FlappyAgent):
 
         s_0 = self.get_q(state, 0)
         s_1 = self.get_q(state, 1)
-
-        # TODO
-        # need to handle the case if there's no values for either s_0 or s_1
 
         if s_0 is None:
             s_0 = 0
@@ -104,13 +94,11 @@ class QlearningAgent(FlappyAgent):
 
         greedy: bool = np.random.choice(
             [False, True], p=[self.epsilon, 1 - self.epsilon])
-        # greedy = False
 
         if greedy:
             action = self.action_with_max_value(state)
         else:
             action = random.randint(0, 1)
-        # action = [0, 0, 1, 1, 1, 1, 1][random.randint(0, 6)]
 
         return action
 
